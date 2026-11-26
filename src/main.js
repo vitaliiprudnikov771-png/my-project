@@ -133,6 +133,7 @@ function requestMouseCapture() {
 }
 
 function start() {
+  state = "game";
   audio.start();
   monsters.forEach(monster => scene.remove(monster.root));
   monsters.length = 0;
@@ -401,7 +402,7 @@ $("#look-zone").addEventListener("pointerup", endLook);
 $("#look-zone").addEventListener("pointercancel", endLook);
 
 document.addEventListener("mousedown", event => {
-  if (state !== "game" || innerWidth <= 760) return;
+  if (state !== "game" || innerWidth <= 760 || event.target !== canvas) return;
   if (event.button === 0) fire();
   if (event.button === 2) {
     mouseLooking = true;
