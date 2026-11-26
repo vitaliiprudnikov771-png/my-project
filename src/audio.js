@@ -56,4 +56,18 @@ export class AudioSystem {
   toggle(enabled) {
     this.enabled = Boolean(enabled);
   }
+
+  dispose() {
+    this.enabled = false;
+    const context = this.context;
+    this.context = null;
+    if (!context || context.state === "closed") return;
+
+    try {
+      const closing = context.close();
+      closing?.catch?.(() => {});
+    } catch {
+      // Audio cleanup must never prevent the rest of the page from closing.
+    }
+  }
 }
