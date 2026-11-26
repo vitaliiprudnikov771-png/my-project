@@ -2,51 +2,77 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#171a1d">
-  <meta name="description" content="GROUND ZERO — 3D arena trials for Telegram Mini Apps.">
-  <title>GROUND ZERO — Arena Trials</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#090c0b">
+  <meta name="description" content="GROUND ZERO — атмосферный 3D FPS в заброшенном комплексе.">
+  <title>GROUND ZERO | Survival</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<main id="app">
-  <canvas id="game-canvas" aria-label="Трёхмерная арена GROUND ZERO"></canvas>
-  <header id="hud" class="hud hidden">
-    <div class="hud-card"><span class="hud-label">ЗАЩИТА</span><strong id="shield-value">100</strong><div class="bar"><i id="shield-bar"></i></div></div>
-    <div class="hud-card centered"><span class="hud-label">ВОЛНА</span><strong id="wave-value">01</strong><small id="targets-value">Цели: 0 / 3</small></div>
-    <div class="hud-card right"><span class="hud-label">ОЧКИ</span><strong id="score-value">0000</strong></div>
-  </header>
-  <div id="crosshair" class="crosshair hidden"><i></i></div>
-  <div id="toast" class="toast"></div>
-  <section id="menu-screen" class="screen">
-    <div class="panel menu-panel">
-      <div class="eyebrow">АРЕНА ИСПЫТАНИЙ · 3D</div>
-      <div class="brand-mark"><i></i><i></i><i></i></div>
-      <h1>GROUND<br><em>ZERO</em></h1>
-      <p class="lead">Пройди тренировочную арену, помечай летающие дроны сканером, собирай энергию и продержись как можно дольше.</p>
-      <div class="chips"><span>ТРЕТЬЕ ЛИЦО</span><span>ВОЛНЫ</span><span>МОБИЛЬНОЕ УПРАВЛЕНИЕ</span></div>
-      <button id="start-button" class="primary">НАЧАТЬ ИСПЫТАНИЕ <b>↗</b></button>
-      <button id="settings-button" class="secondary">НАСТРОЙКИ</button>
-      <div id="settings-panel" class="settings hidden">
-        <label>Качество <select id="quality-select"><option value="high">Высокое</option><option value="low">Экономия батареи</option></select></label>
-        <label>Звук <input id="sound-toggle" type="checkbox" checked></label>
+  <main id="app">
+    <canvas id="game" aria-label="Трёхмерная игра GROUND ZERO"></canvas>
+
+    <section id="menu" class="overlay">
+      <div class="menu-card">
+        <div class="overline">FIELD OPERATIONS · 01</div>
+        <h1>GROUND<br><span>ZERO</span></h1>
+        <p>Найди выход. Не дай им найти тебя.</p>
+        <button id="start">ENTER THE FACILITY</button>
+        <div class="small">3D SURVIVAL · MOBILE / DESKTOP</div>
       </div>
-      <small id="welcome-label" class="welcome">BROWSER PREVIEW</small>
-    </div>
-  </section>
-  <section id="pause-screen" class="screen hidden"><div class="panel dialog"><div class="eyebrow">СЕАНС ПРИОСТАНОВЛЕН</div><h2>ПАУЗА</h2><button id="resume-button" class="primary">ПРОДОЛЖИТЬ</button><button id="restart-button" class="secondary">ЗАНОВО</button><button id="exit-button" class="text-button">В ГЛАВНОЕ МЕНЮ</button></div></section>
-  <section id="result-screen" class="screen hidden"><div class="panel dialog"><div class="eyebrow">ИСПЫТАНИЕ ЗАВЕРШЕНО</div><h2>СЕАНС ОКОНЧЕН</h2><div id="final-score" class="result-score">0000</div><div class="result-grid"><div><small>ВОЛНА</small><strong id="final-wave">01</strong></div><div><small>ЦЕЛИ</small><strong id="final-tags">0</strong></div><div><small>РЕКОРД</small><strong id="best-score">0000</strong></div></div><button id="again-button" class="primary">ЕЩЁ РАЗ</button><button id="result-home-button" class="text-button">В ГЛАВНОЕ МЕНЮ</button></div></section>
-  <div id="mobile-controls" class="mobile hidden">
-    <div id="move-pad" class="move-pad"><div id="move-knob" class="move-knob"></div></div>
-    <div id="look-area" class="look-area"></div>
-    <button id="dash-button" class="control dash">РЫВОК</button>
-    <button id="scan-button" class="control scan">СКАНЕР <b>◉</b></button>
-    <button id="pause-button" class="pause" aria-label="Пауза">Ⅱ</button>
-    <div class="hint">ДВИЖЕНИЕ · ОБЗОР · СКАНИРОВАНИЕ</div>
-  </div>
-  <div id="desktop-hint" class="desktop-hint hidden">W A S D — движение · ПКМ + мышь — обзор · F — сканер · SHIFT — рывок · ESC — пауза</div>
-</main>
-<script type="module" src="./src/main.js"></script>
+    </section>
+
+    <section id="hud" class="hidden" aria-live="polite">
+      <div class="topline">
+        <div class="stat">
+          <small>HEALTH</small>
+          <b id="health">100</b>
+          <div class="meter"><i id="healthbar"></i></div>
+        </div>
+        <div class="objective" id="objective">HOSTILES: 4</div>
+        <div class="stat right">
+          <small>AMMO</small>
+          <b id="ammo">12 / 48</b>
+        </div>
+      </div>
+
+      <div id="reticle" aria-hidden="true"></div>
+      <div class="controls-hint">WASD · МЫШЬ / ПКМ — ОБЗОР · ЛКМ / SPACE — ОГОНЬ · R — ПЕРЕЗАРЯДКА · F — ФОНАРЬ · ESC — ПАУЗА</div>
+      <div class="bottom-hud">
+        <div class="weapon-name">SERVICE PISTOL<small>STANDARD ISSUE</small></div>
+        <button id="reload">RELOAD <kbd>R</kbd></button>
+        <button id="flash">FLASHLIGHT <kbd>F</kbd></button>
+        <button id="pause" aria-label="Пауза">Ⅱ</button>
+      </div>
+
+      <div id="mobile">
+        <div id="stick" aria-label="Движение"><div id="stick-knob"></div></div>
+        <div id="look-zone" aria-label="Обзор"></div>
+        <button id="fire" aria-label="Огонь">FIRE</button>
+        <button id="mreload" aria-label="Перезарядка">↻</button>
+        <button id="mflash" aria-label="Фонарик">◉</button>
+      </div>
+      <div id="notice" role="status"></div>
+    </section>
+
+    <section id="pausemenu" class="overlay hidden">
+      <div class="menu-card">
+        <div class="overline">SESSION PAUSED</div>
+        <h2>PAUSED</h2>
+        <button id="resume">CONTINUE</button>
+        <button id="quit">EXIT</button>
+      </div>
+    </section>
+
+    <section id="endmenu" class="overlay hidden">
+      <div class="menu-card">
+        <div class="overline">SESSION REPORT</div>
+        <h2>SESSION ENDED</h2>
+        <button id="restart">TRY AGAIN</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

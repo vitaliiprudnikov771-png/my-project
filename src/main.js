@@ -1,41 +1,491 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {ArenaState} from "./game-state.js";
-import {InputController} from "./input.js";
-import {buildArena,buildPlayer,createDrone,createEnergy,createScanLine} from "./world.js";
-const $=s=>document.querySelector(s),state=new ArenaState(),input=new InputController(),canvas=$("#game-canvas");
-const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,120);
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight,false);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
-buildArena(scene);const player=buildPlayer(scene),raycaster=new THREE.Raycaster();raycaster.far=34;
-const drones=[],pickups=[],effects=[],clock=new THREE.Clock();let yaw=0,pitch=-.08,dashTimer=0,scanPressed=false,dashPressed=false,contactCooldown=0,audioContext=null,soundEnabled=true,quality="high";
-let bestScore=Number(localStorage.getItem("gz-best-score")||0);
-const tg=window.Telegram&&window.Telegram.WebApp;
-if(tg&&tg.initData){try{tg.ready();tg.expand();if(tg.disableVerticalSwipes)tg.disableVerticalSwipes();tg.setHeaderColor&&tg.setHeaderColor("#171a1d");tg.setBackgroundColor&&tg.setBackgroundColor("#171a1d");}catch{}const user=tg.initDataUnsafe&&tg.initDataUnsafe.user;$("#welcome-label").textContent=user&&user.first_name?"ДОБРО ПОЖАЛОВАТЬ, "+user.first_name.toUpperCase():"TELEGRAM MINI APP";}
-function tone(freq,duration){if(!soundEnabled)return;try{audioContext=audioContext||new AudioContext();const o=audioContext.createOscillator(),g=audioContext.createGain();o.type="sine";o.frequency.value=freq;g.gain.setValueAtTime(.035,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+duration);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+duration);}catch{}}
-function showScreen(id){["#menu-screen","#pause-screen","#result-screen"].forEach(s=>$(s).classList.toggle("hidden",s!==id));}
-function toast(text){const el=$("#toast");el.textContent=text;el.classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove("show"),1150);}
-function updateHud(){$("#shield-value").textContent=Math.round(state.shield);$("#shield-bar").style.width=state.shield+"%";$("#wave-value").textContent=String(state.wave).padStart(2,"0");$("#targets-value").textContent="Цели: "+state.taggedInWave+" / "+(state.taggedInWave+state.targetsRemaining);$("#score-value").textContent=String(state.score).padStart(4,"0");}
-function clearObjects(){drones.forEach(d=>scene.remove(d.root));drones.length=0;pickups.forEach(p=>scene.remove(p.group));pickups.length=0;effects.forEach(e=>{scene.remove(e.line);e.geometry.dispose();e.material.dispose();});effects.length=0;}
-function spawnWave(){for(let i=0;i<state.targetsRemaining;i++)drones.push(createDrone(scene,i));toast("ВОЛНА "+String(state.wave).padStart(2,"0"));}
-function startGame(){clearObjects();state.start();player.root.position.set(0,0,0);yaw=0;pitch=-.08;dashTimer=0;contactCooldown=0;spawnWave();showScreen(null);$("#hud").classList.remove("hidden");$("#crosshair").classList.remove("hidden");$("#mobile-controls").classList.toggle("hidden",innerWidth>=760);$("#desktop-hint").classList.toggle("hidden",innerWidth<760);updateHud();tone(650,.12);}
-function pauseGame(){if(state.phase!=="running")return;state.phase="paused";input.clear();showScreen("#pause-screen");$("#mobile-controls").classList.add("hidden");$("#desktop-hint").classList.add("hidden");}
-function resumeGame(){if(state.phase!=="paused")return;state.phase="running";showScreen(null);$("#mobile-controls").classList.toggle("hidden",innerWidth>=760);$("#desktop-hint").classList.toggle("hidden",innerWidth<760);clock.getDelta();}
-function finishGame(){state.finish();bestScore=Math.max(bestScore,state.score);localStorage.setItem("gz-best-score",String(bestScore));$("#final-score").textContent=String(state.score).padStart(4,"0");$("#final-wave").textContent=String(state.wave).padStart(2,"0");$("#final-tags").textContent=state.tags;$("#best-score").textContent=String(bestScore).padStart(4,"0");showScreen("#result-screen");$("#hud").classList.add("hidden");$("#crosshair").classList.add("hidden");$("#mobile-controls").classList.add("hidden");$("#desktop-hint").classList.add("hidden");tone(170,.3);}
-function tagDrone(d){if(d.tagged||!state.tagTarget())return;d.tagged=true;d.taggedAt=0;d.core.material=d.core.material.clone();d.core.material.color.setHex(0xb8edcb);d.core.material.emissive.setHex(0x62bf88);d.body.material=d.body.material.clone();d.body.material.color.setHex(0x9eb9a5);effects.push(createScanLine(scene,player.root.position.clone().add(new THREE.Vector3(0,1.5,0)),d.root.position.clone()));pickups.push(createEnergy(scene,d.root.position.clone()));tone(780,.08);toast("ЦЕЛЬ ПОМЕЧЕНА · +100");updateHud();}
-function scan(){if(!state.beginScan())return;raycaster.setFromCamera(new THREE.Vector2(0,0),camera);const hit=raycaster.intersectObjects(drones.filter(d=>!d.tagged).map(d=>d.collider),false)[0];if(hit){const d=drones.find(x=>x.collider===hit.object);if(d)tagDrone(d);}else{tone(290,.045);toast("СКАНЕР: ЦЕЛЬ НЕ ОБНАРУЖЕНА");}}
-function tryDash(){if(state.beginDash()){dashTimer=.24;tone(360,.055);}}
-$("#start-button").addEventListener("click",startGame);$("#again-button").addEventListener("click",startGame);$("#restart-button").addEventListener("click",startGame);$("#resume-button").addEventListener("click",resumeGame);$("#pause-button").addEventListener("click",pauseGame);
-$("#exit-button").addEventListener("click",()=>{state.phase="menu";showScreen("#menu-screen");$("#hud").classList.add("hidden");});$("#result-home-button").addEventListener("click",()=>{state.phase="menu";showScreen("#menu-screen");});
-$("#settings-button").addEventListener("click",()=>$("#settings-panel").classList.toggle("hidden"));$("#quality-select").addEventListener("change",e=>{quality=e.target.value;renderer.setPixelRatio(Math.min(devicePixelRatio,quality==="high"?1.5:1));});$("#sound-toggle").addEventListener("change",e=>soundEnabled=e.target.checked);
-window.addEventListener("keydown",e=>{if(e.code==="Escape"){if(state.phase==="running")pauseGame();else if(state.phase==="paused")resumeGame();}});
-window.addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight,false);if(state.phase==="running"){$("#mobile-controls").classList.toggle("hidden",innerWidth>=760);$("#desktop-hint").classList.toggle("hidden",innerWidth<760);}});
-document.addEventListener("visibilitychange",()=>{if(document.hidden)pauseGame();});window.addEventListener("blur",()=>{if(state.phase==="running")pauseGame();});
-function updatePlayer(dt,c){const look=input.consumeLook();yaw-=look.yaw;pitch=THREE.MathUtils.clamp(pitch-look.pitch,-.38,.28);if(c.dash&&!dashPressed)tryDash();dashPressed=c.dash;if(c.scan&&!scanPressed)scan();scanPressed=c.scan;if(dashTimer>0)dashTimer=Math.max(0,dashTimer-dt);
-  const f=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw)),r=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw)),move=r.multiplyScalar(c.x).add(f.multiplyScalar(c.y));if(move.lengthSq()>1)move.normalize();player.root.position.addScaledVector(move,(dashTimer>0?18:7.2)*dt);player.root.position.x=THREE.MathUtils.clamp(player.root.position.x,-24,24);player.root.position.z=THREE.MathUtils.clamp(player.root.position.z,-24,24);player.root.rotation.y=yaw;player.body.rotation.z=-c.x*.07;
+import { buildMaze, cellBlocked, getSpawnPoints } from "./maze.js";
+import { createPlayer, animateWeapon } from "./player.js";
+import { spawnMonster, updateMonster } from "./monster.js";
+import { AudioSystem } from "./audio.js";
+import { GameSession } from "./session.js";
+import { getViewportMetrics } from "./viewport.js";
+import { createFrameLoop } from "./frame-loop.js";
+import { disposeObjectResources } from "./dispose.js";
+
+const $ = selector => document.querySelector(selector);
+const canvas = $("#game");
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080c0a);
+scene.fog = new THREE.FogExp2(0x080c0a, .045);
+
+const initialViewport = getViewportMetrics(window);
+const camera = new THREE.PerspectiveCamera(75, initialViewport.width / initialViewport.height, .1, 70);
+camera.position.set(-20, 1.65, -12);
+camera.rotation.order = "YXZ";
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  powerPreference: "high-performance"
+});
+renderer.setPixelRatio(initialViewport.pixelRatio);
+renderer.setSize(initialViewport.width, initialViewport.height);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = .85;
+
+scene.add(new THREE.HemisphereLight(0x69756d, 0x111713, .45));
+const fillLight = new THREE.DirectionalLight(0x9aa49a, .25);
+fillLight.position.set(-8, 10, 4);
+fillLight.castShadow = true;
+fillLight.shadow.mapSize.set(1024, 1024);
+fillLight.shadow.camera.left = -28;
+fillLight.shadow.camera.right = 28;
+fillLight.shadow.camera.top = 20;
+fillLight.shadow.camera.bottom = -20;
+scene.add(fillLight);
+
+const mazeRoot = buildMaze(scene);
+const player = createPlayer(scene, camera);
+const audio = new AudioSystem();
+const monsters = [];
+const clock = new THREE.Clock();
+const raycaster = new THREE.Raycaster();
+
+const session = new GameSession();
+let health = 100;
+let ammo = 12;
+let reserve = 48;
+let yaw = Math.PI;
+let pitch = 0;
+let flashlightOn = true;
+let shootCooldown = 0;
+let reloadTime = 0;
+let damageCooldown = 0;
+let footstepTimer = 0;
+let noteTimer = 0;
+let mouseLooking = false;
+let lastMouse = null;
+let joystickPointer = null;
+let lookPointer = null;
+let lastLook = null;
+const keyboard = new Set();
+const touchMove = { x: 0, y: 0 };
+const move = { x: 0, y: 0 };
+
+function show(screen) {
+  $("#menu").classList.toggle("hidden", screen !== "menu");
+  $("#pausemenu").classList.toggle("hidden", screen !== "pause");
+  $("#endmenu").classList.toggle("hidden", screen !== "end");
+  $("#hud").classList.toggle("hidden", screen !== "game");
+  document.body.classList.toggle("playing", screen === "game");
 }
-function updateDrones(dt){contactCooldown=Math.max(0,contactCooldown-dt);for(const d of drones){if(d.tagged){d.taggedAt+=dt;d.root.scale.setScalar(Math.max(.05,1-d.taggedAt*2.1));if(d.taggedAt>.48){scene.remove(d.root);d.remove=true;}continue;}d.phase+=dt*2.2;d.rotor.rotation.y+=dt*3.5;const dx=player.root.position.x-d.root.position.x,dz=player.root.position.z-d.root.position.z,dist=Math.hypot(dx,dz)||1,drift=Math.min(1.1,dist*.07)*d.speed;d.root.position.x+=dx/dist*drift*dt+Math.cos(d.phase)*.34*dt;d.root.position.z+=dz/dist*drift*dt+Math.sin(d.phase*.8)*.34*dt;d.root.position.y=2.4+Math.sin(d.phase)*.28;d.root.lookAt(player.root.position.x,d.root.position.y,player.root.position.z);if(dist<1.55&&contactCooldown<=0){state.drainShield(9);contactCooldown=1.05;player.root.position.x-=dx/dist*.8;player.root.position.z-=dz/dist*.8;toast("КОНТАКТ · ЗАЩИТА СНИЖЕНА");tone(210,.12);updateHud();if(state.phase==="finished")finishGame();}}for(let i=drones.length-1;i>=0;i--)if(drones[i].remove)drones.splice(i,1);}
-function updatePickups(dt){for(let i=pickups.length-1;i>=0;i--){const p=pickups[i];p.age+=dt;p.group.rotation.y+=dt*1.5;p.group.position.y=1.2+Math.sin(p.age*3)*.18;if(p.group.position.distanceTo(player.root.position)<1.45){state.collectEnergy(18);scene.remove(p.group);pickups.splice(i,1);tone(900,.09);toast("ЭНЕРГИЯ СОБРАНА");updateHud();}else if(p.age>14){scene.remove(p.group);pickups.splice(i,1);}}}
-function updateEffects(dt){for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.age+=dt;e.material.opacity=Math.max(0,1-e.age*5);if(e.age>.2){scene.remove(e.line);e.geometry.dispose();e.material.dispose();effects.splice(i,1);}}}
-function updateCamera(dt){const dir=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw)),desired=player.root.position.clone().add(new THREE.Vector3(-dir.x*6,4.2+pitch*3,-dir.z*6));camera.position.lerp(desired,1-Math.exp(-7*dt));camera.lookAt(player.root.position.clone().add(new THREE.Vector3(0,1.35,0)).addScaledVector(dir,5+pitch*3));}
-function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(state.phase==="running"){const previousWave=state.wave;state.update(dt);if(state.wave!==previousWave){spawnWave();toast("ВОЛНА ПРОЙДЕНА · НОВОЕ ИСПЫТАНИЕ");tone(720,.16);}updatePlayer(dt,input.read());updateDrones(dt);updatePickups(dt);updateEffects(dt);updateCamera(dt);updateHud();}else{updateEffects(dt);updateCamera(dt);}renderer.render(scene,camera);}
-camera.position.set(0,4.2,-6);camera.lookAt(0,1,5);frame();
+
+function note(message) {
+  const element = $("#notice");
+  element.textContent = message;
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => {
+    element.textContent = "";
+  }, 1800);
+}
+
+function updateHud() {
+  $("#health").textContent = String(health);
+  $("#healthbar").style.width = health + "%";
+  $("#ammo").textContent = ammo + " / " + reserve;
+  $("#objective").textContent = monsters.length
+    ? "HOSTILES: " + monsters.length
+    : "AREA SECURED";
+}
+
+function updateMove() {
+  const keyX = Number(keyboard.has("KeyD") || keyboard.has("ArrowRight"))
+    - Number(keyboard.has("KeyA") || keyboard.has("ArrowLeft"));
+  const keyY = Number(keyboard.has("KeyW") || keyboard.has("ArrowUp"))
+    - Number(keyboard.has("KeyS") || keyboard.has("ArrowDown"));
+  let x = keyX + touchMove.x;
+  let y = keyY + touchMove.y;
+  const length = Math.hypot(x, y);
+  if (length > 1) {
+    x /= length;
+    y /= length;
+  }
+  move.x = x;
+  move.y = y;
+}
+
+function disposeMonster(monster) {
+  scene.remove(monster.root);
+  disposeObjectResources(monster.root);
+}
+
+function resetInput() {
+  keyboard.clear();
+  touchMove.x = 0;
+  touchMove.y = 0;
+  move.x = 0;
+  move.y = 0;
+  joystickPointer = null;
+  lookPointer = null;
+  lastLook = null;
+  mouseLooking = false;
+  lastMouse = null;
+  $("#stick-knob").style.transform = "";
+}
+
+function requestMouseCapture() {
+  if (innerWidth <= 760 || !canvas.requestPointerLock) return;
+  try {
+    const result = canvas.requestPointerLock();
+    result?.catch?.(() => {});
+  } catch {
+    // Right-button drag remains available when pointer lock is denied.
+  }
+}
+
+function start() {
+  session.start();
+  audio.start();
+  monsters.forEach(disposeMonster);
+  monsters.length = 0;
+
+  health = 100;
+  ammo = 12;
+  reserve = 48;
+  shootCooldown = 0;
+  reloadTime = 0;
+  damageCooldown = 0;
+  footstepTimer = 0;
+  yaw = Math.PI;
+  pitch = 0;
+  camera.position.set(-20, 1.65, -12);
+  camera.rotation.set(pitch, yaw, 0, "YXZ");
+  resetInput();
+
+  const spawnPoints = getSpawnPoints(camera.position.x, camera.position.z, 4);
+  for (const point of spawnPoints) {
+    monsters.push(spawnMonster(scene, new THREE.Vector3(point.x, 0, point.z)));
+  }
+
+  updateHud();
+  show("game");
+  clock.getDelta();
+  frameLoop.start();
+  requestMouseCapture();
+}
+
+function pause() {
+  if (session.state !== "game") return;
+  session.pause();
+  frameLoop.stop();
+  resetInput();
+  if (document.pointerLockElement) document.exitPointerLock();
+  show("pause");
+}
+
+function end() {
+  session.end();
+  frameLoop.stop();
+  resetInput();
+  if (document.pointerLockElement) document.exitPointerLock();
+  show("end");
+}
+
+function reload() {
+  if (session.state !== "game" || reloadTime > 0 || ammo >= 12 || reserve <= 0) return;
+  reloadTime = 1.1;
+  note("RELOADING");
+}
+
+function fire() {
+  if (session.state !== "game" || shootCooldown > 0 || reloadTime > 0) return;
+  if (ammo <= 0) {
+    note("EMPTY");
+    audio.tone(200, .06, "square");
+    return;
+  }
+
+  ammo--;
+  shootCooldown = .25;
+  player.recoil = .8;
+  audio.shot();
+
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const targets = raycaster.intersectObjects(monsters.map(monster => monster.root), true);
+  const obstacles = raycaster.intersectObject(mazeRoot, true);
+  const targetHit = targets[0];
+  const wallHit = obstacles[0];
+
+  if (targetHit && (!wallHit || targetHit.distance < wallHit.distance)) {
+    const monster = monsters.find(item => item.root === targetHit.object.parent
+      || item.root.children.includes(targetHit.object));
+    if (monster) {
+      monster.health--;
+      audio.hit();
+      if (monster.health <= 0) {
+        disposeMonster(monster);
+        monsters.splice(monsters.indexOf(monster), 1);
+        note("TARGET DOWN");
+        updateHud();
+      }
+    }
+  }
+
+  updateHud();
+}
+
+function toggleFlashlight() {
+  flashlightOn = !flashlightOn;
+  player.flashlight.intensity = flashlightOn ? 65 : 0;
+  note(flashlightOn ? "LIGHT ON" : "LIGHT OFF");
+}
+
+function tryMove(deltaX, deltaZ) {
+  const radius = .28;
+  const nextX = camera.position.x + deltaX;
+  const nextZ = camera.position.z + deltaZ;
+  if (!cellBlocked(nextX, camera.position.z, radius)) camera.position.x = nextX;
+  if (!cellBlocked(camera.position.x, nextZ, radius)) camera.position.z = nextZ;
+}
+
+function update(deltaTime) {
+  if (session.state !== "game") return;
+
+  shootCooldown = Math.max(0, shootCooldown - deltaTime);
+  damageCooldown = Math.max(0, damageCooldown - deltaTime);
+
+  if (reloadTime > 0) {
+    reloadTime -= deltaTime;
+    if (reloadTime <= 0) {
+      const loaded = Math.min(12 - ammo, reserve);
+      ammo += loaded;
+      reserve -= loaded;
+      updateHud();
+    }
+  }
+
+  const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const direction = right.multiplyScalar(move.x).add(forward.multiplyScalar(move.y));
+  if (direction.lengthSq() > 1) direction.normalize();
+
+  const stepX = direction.x * 3.4 * deltaTime;
+  const stepZ = direction.z * 3.4 * deltaTime;
+  tryMove(stepX, stepZ);
+
+  if (direction.lengthSq() > .01) {
+    footstepTimer -= deltaTime;
+    if (footstepTimer <= 0) {
+      audio.step();
+      footstepTimer = .45;
+    }
+  }
+
+  for (const monster of monsters) {
+    const distance = updateMonster(monster, camera.position, deltaTime);
+    if (distance < 1.3 && damageCooldown <= 0) {
+      health = Math.max(0, health - 12);
+      damageCooldown = 1;
+      updateHud();
+      note("YOU ARE INJURED");
+      if (health === 0) {
+        end();
+        break;
+      }
+    }
+  }
+
+  player.moving = direction.lengthSq() > .01;
+  animateWeapon(player, deltaTime);
+}
+
+function applyLook(deltaX, deltaY, sensitivity = .004) {
+  yaw -= deltaX * sensitivity;
+  pitch = THREE.MathUtils.clamp(pitch - deltaY * sensitivity, -1.1, 1.1);
+  camera.rotation.set(pitch, yaw, 0, "YXZ");
+}
+
+const frameLoop = createFrameLoop(() => {
+  update(Math.min(clock.getDelta(), .05));
+  renderer.render(scene, camera);
+}, {
+  request: callback => window.requestAnimationFrame(callback),
+  cancel: handle => window.cancelAnimationFrame(handle)
+});
+renderer.render(scene, camera);
+
+$("#start").addEventListener("click", start);
+$("#resume").addEventListener("click", () => {
+  session.resume();
+  show("game");
+  clock.getDelta();
+  frameLoop.start();
+  requestMouseCapture();
+});
+$("#quit").addEventListener("click", () => {
+  session.quit();
+  frameLoop.stop();
+  resetInput();
+  if (document.pointerLockElement) document.exitPointerLock();
+  show("menu");
+});
+$("#restart").addEventListener("click", start);
+$("#pause").addEventListener("click", pause);
+$("#reload").addEventListener("click", reload);
+$("#mreload").addEventListener("click", reload);
+$("#flash").addEventListener("click", toggleFlashlight);
+$("#mflash").addEventListener("click", toggleFlashlight);
+$("#fire").addEventListener("click", fire);
+
+window.addEventListener("keydown", event => {
+  if (event.code === "Escape") {
+    if (session.state === "game") pause();
+    else if (session.state === "pause") {
+      session.resume();
+      show("game");
+      clock.getDelta();
+      frameLoop.start();
+      requestMouseCapture();
+    }
+    return;
+  }
+  if (session.state !== "game") return;
+  if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+    event.preventDefault();
+  }
+  if (event.repeat) return;
+  keyboard.add(event.code);
+  updateMove();
+  if (event.code === "KeyR") reload();
+  if (event.code === "KeyF") toggleFlashlight();
+  if (event.code === "Space") fire();
+});
+
+window.addEventListener("keyup", event => {
+  keyboard.delete(event.code);
+  updateMove();
+});
+
+$("#stick").addEventListener("pointerdown", event => {
+  event.preventDefault();
+  joystickPointer = event.pointerId;
+  $("#stick").setPointerCapture(event.pointerId);
+  updateJoystick(event);
+});
+$("#stick").addEventListener("pointermove", event => {
+  if (event.pointerId === joystickPointer) updateJoystick(event);
+});
+
+function updateJoystick(event) {
+  const rect = $("#stick").getBoundingClientRect();
+  const dx = event.clientX - rect.left - rect.width / 2;
+  const dy = event.clientY - rect.top - rect.height / 2;
+  const limit = 38;
+  const length = Math.hypot(dx, dy);
+  const scale = length > limit ? limit / length : 1;
+  const x = dx * scale;
+  const y = dy * scale;
+  $("#stick-knob").style.transform = `translate(${x}px, ${y}px)`;
+  touchMove.x = x / limit;
+  touchMove.y = -y / limit;
+  updateMove();
+}
+
+function endJoystick(event) {
+  if (event.pointerId !== joystickPointer) return;
+  joystickPointer = null;
+  touchMove.x = 0;
+  touchMove.y = 0;
+  $("#stick-knob").style.transform = "";
+  updateMove();
+}
+$("#stick").addEventListener("pointerup", endJoystick);
+$("#stick").addEventListener("pointercancel", endJoystick);
+
+$("#look-zone").addEventListener("pointerdown", event => {
+  lookPointer = event.pointerId;
+  lastLook = { x: event.clientX, y: event.clientY };
+  $("#look-zone").setPointerCapture(event.pointerId);
+});
+$("#look-zone").addEventListener("pointermove", event => {
+  if (event.pointerId !== lookPointer || !lastLook) return;
+  applyLook(event.clientX - lastLook.x, event.clientY - lastLook.y, .0035);
+  lastLook = { x: event.clientX, y: event.clientY };
+});
+
+function endLook(event) {
+  if (event.pointerId !== lookPointer) return;
+  lookPointer = null;
+  lastLook = null;
+}
+$("#look-zone").addEventListener("pointerup", endLook);
+$("#look-zone").addEventListener("pointercancel", endLook);
+
+document.addEventListener("mousedown", event => {
+  if (session.state !== "game" || innerWidth <= 760 || event.target !== canvas) return;
+  if (event.button === 0) fire();
+  if (event.button === 2) {
+    mouseLooking = true;
+    lastMouse = { x: event.clientX, y: event.clientY };
+  }
+});
+document.addEventListener("mouseup", event => {
+  if (event.button === 2) {
+    mouseLooking = false;
+    lastMouse = null;
+  }
+});
+document.addEventListener("mousemove", event => {
+  if (session.state !== "game" || innerWidth <= 760) return;
+  if (document.pointerLockElement === canvas) {
+    applyLook(event.movementX, event.movementY);
+  } else if (mouseLooking && lastMouse) {
+    applyLook(event.clientX - lastMouse.x, event.clientY - lastMouse.y);
+    lastMouse = { x: event.clientX, y: event.clientY };
+  }
+});
+document.addEventListener("contextmenu", event => {
+  if (session.state === "game") event.preventDefault();
+});
+
+window.addEventListener("blur", () => {
+  if (session.state === "game") pause();
+  resetInput();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && session.state === "game") pause();
+});
+
+function resizeViewport() {
+  const viewport = getViewportMetrics(window);
+  camera.aspect = viewport.width / viewport.height;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(viewport.pixelRatio);
+  renderer.setSize(viewport.width, viewport.height);
+}
+
+window.addEventListener("resize", resizeViewport, { passive: true });
+window.addEventListener("orientationchange", resizeViewport, { passive: true });
+window.visualViewport?.addEventListener("resize", resizeViewport, { passive: true });
+
+const telegram = window.Telegram?.WebApp;
+if (telegram) {
+  try {
+    telegram.ready();
+    telegram.expand();
+    telegram.disableVerticalSwipes?.();
+    telegram.onEvent?.("viewportChanged", resizeViewport);
+  } catch {
+    // The browser build remains usable if Telegram APIs are unavailable.
+  }
+}
+
+window.addEventListener("pagehide", event => {
+  if (event.persisted) return;
+
+  frameLoop.stop();
+  resetInput();
+  disposeObjectResources(scene);
+  disposeObjectResources(camera);
+  renderer.dispose();
+  audio.dispose();
+});

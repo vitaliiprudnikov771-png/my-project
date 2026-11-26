@@ -1,44 +1,66 @@
 # GROUND ZERO
 
-A mobile-first Three.js arena-trials game designed for Telegram Mini Apps and browsers.
+GROUND ZERO is a browser-based, first-person survival maze built with Three.js. It is designed to run on desktop browsers, mobile browsers and Telegram Mini Apps.
 
-## Gameplay
+## Current gameplay
 
-- Third-person camera in a muted industrial training arena.
-- Scan and mark hovering training drones. There are no guns or real-world weapon mechanics.
-- Avoid drone contact, collect energy cells, keep your shield charged.
-- Increasing waves, score, personal best saved in localStorage.
-- Touch joystick, swipe-to-look, scan and dash controls; WASD, right-mouse drag, F and Shift on desktop.
-- Pause/resume, restart, sound toggle and graphics quality setting.
+- First-person camera inside a dark, grid-based facility.
+- Procedurally placed corridor lighting, fog and a camera-mounted flashlight.
+- Fictional enemies that navigate the maze corridors instead of moving through walls.
+- Keyboard and touch movement, desktop mouse aiming and mobile look controls.
+- Fictional service-pistol game mechanic with ammunition, reload and hit feedback.
+- Health, pause, restart and session-end HUD.
 
-## Structure
+## Controls
 
-- `src/main.js`: renderer, scene lifecycle, HUD, wave orchestration and Telegram SDK.
-- `src/world.js`: arena geometry, player avatar, drones, energy pickups and scan effects.
-- `src/input.js`: touch, mouse and keyboard input.
-- `src/game-state.js`: pure game-state rules and cooldowns.
-- `tests/game-state.test.js`: node:test coverage for session, waves, shield, scanner and dash.
-- `emoji-style.json`: validated Telegram Premium emoji role map from the supplied catalogue.
+### Desktop
+- **W / A / S / D** or arrow keys: move.
+- **Mouse**: aim (pointer lock is requested when the game starts).
+- **Right mouse drag**: aim when pointer lock is unavailable.
+- **Left mouse** or **Space**: fire.
+- **R**: reload.
+- **F**: toggle flashlight.
+- **Esc**: pause / resume.
 
-## Run tests locally
+### Mobile
+- Left virtual stick: move.
+- Right side of the screen: look around.
+- FIRE: shoot.
+- ↻: reload.
+- ◉: flashlight.
+
+## Project structure
+
+- `index.html`: game shell and HUD.
+- `styles.css`: responsive desktop/mobile interface.
+- `src/main.js`: Three.js renderer, game loop, input and session state.
+- `src/maze.js`: 3D environment geometry and lighting.
+- `src/maze-grid.js`: normalized maze data, collision checks, BFS pathfinding and enemy spawn selection.
+- `src/player.js`: camera-mounted equipment and weapon animation.
+- `src/monster.js`: enemy model and corridor-following movement.
+- `src/audio.js`: optional Web Audio effects.
+- `src/session.js`: testable menu, gameplay, pause and end-state transitions.
+- `tests/`: Node.js tests for maze geometry rules, session transitions and the retained legacy game-state module.
+
+## Validation
 
 Requires Node.js 22 or newer:
 
 ```bash
-npm test
 npm run check
+npm test
 ```
 
-The Three.js module is loaded from jsDelivr at runtime, so the page needs an internet connection.
+The Three.js runtime module is loaded from the pinned jsDelivr URL, so the game needs an internet connection. No backend or multiplayer server is implemented yet.
 
 ## GitHub Pages
 
-1. In repository Settings → Pages, set **Build and deployment → Source** to **GitHub Actions**.
-2. Push to `main`; `.github/workflows/pages.yml` runs tests and publishes the static site.
-3. The project URL is `https://vitaliiprudnikov771-png.github.io/my-project/`.
+The Pages workflow runs syntax checks and unit tests on pushes to `main` and `rebuild-fps-foundation`, and on pull requests targeting `main`. The deploy job is restricted to pushes on `main`, so testing a feature branch does not replace the public site.
+
+The project Pages URL is:
+
+https://vitaliiprudnikov771-png.github.io/my-project/
 
 ## Telegram Mini App
 
-Telebot Creator opens the deployed HTTPS URL with a `web_app` inline-keyboard button. Telegram WebApp SDK calls `ready()` and `expand()`; the first name from `initDataUnsafe` is used for the greeting only and is not trusted for authentication.
-
-Premium custom emoji are Telegram message markup, not browser UI. The validated IDs in `emoji-style.json` are used in bot messages with `parse_mode="HTML"`; the browser game uses its own interface glyphs.
+The page initializes the Telegram Web App SDK when it is available and otherwise runs as a regular browser game. Telegram identity data is not used for authentication; there is no server-side identity or multiplayer implementation.

@@ -1,1 +1,10 @@
-{"name":"ground-zero-arena","version":"1.0.0","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js","check":"node --check src/main.js && node --check src/input.js && node --check src/world.js && node --check src/game-state.js && npm test"}}
+{
+  "name": "ground-zero-survival",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check src/main.js && node --check src/maze.js && node --check src/maze-grid.js && node --check src/player.js && node --check src/monster.js && node --check src/audio.js && node --check src/session.js && node --check src/input.js && node --check src/world.js && node --check src/game-state.js && npm test"
+  }
+}
