@@ -44,13 +44,24 @@ export function spawnMonster(scene, position) {
 export function updateMonster(monster, playerPosition, dt) {
   monster.repathTimer -= dt;
   if (monster.repathTimer <= 0) {
-    monster.path = findPath(
+    const nextPath = findPath(
       monster.root.position.x,
       monster.root.position.z,
       playerPosition.x,
       playerPosition.z
     );
-    monster.pathIndex = Math.min(1, Math.max(0, monster.path.length - 1));
+    const currentTarget = monster.path[monster.path.length - 1];
+    const nextTarget = nextPath[nextPath.length - 1];
+    const targetChanged =
+      !currentTarget ||
+      !nextTarget ||
+      currentTarget.x !== nextTarget.x ||
+      currentTarget.z !== nextTarget.z;
+
+    if (targetChanged) {
+      monster.path = nextPath;
+      monster.pathIndex = Math.min(1, Math.max(0, monster.path.length - 1));
+    }
     monster.repathTimer = .4;
   }
 
