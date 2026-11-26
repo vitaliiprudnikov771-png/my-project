@@ -1,1 +1,59 @@
-export class AudioSystem{constructor(){this.ctx=null;this.enabled=true;}start(){if(!this.enabled)return;try{this.ctx=this.ctx||new AudioContext();if(this.ctx.state==="suspended")this.ctx.resume();}catch{}}tone(freq=120,duration=.1,type="sawtooth",volume=.035){if(!this.enabled)return;this.start();if(!this.ctx)return;const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+duration);o.connect(g);g.connect(this.ctx.destination);o.start();o.stop(this.ctx.currentTime+duration);}shot(){this.tone(95,.12,"sawtooth",.055);this.tone(55,.16,"triangle",.04);}hit(){this.tone(220,.08,"square",.025);}step(){this.tone(65,.04,"triangle",.012);}toggle(v){this.enabled=v;}}
+export class AudioSystem {
+  constructor() {
+    this.context = null;
+    this.enabled = true;
+  }
+
+  start() {
+    if (!this.enabled) return;
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      this.context = this.context || new AudioContextClass();
+      if (this.context.state === "suspended") {
+        this.context.resume().catch(() => {});
+      }
+    } catch {
+      // Audio is optional; gameplay must work when audio is unavailable.
+    }
+  }
+
+  tone(frequency = 120, duration = .1, type = "sawtooth", volume = .035) {
+    if (!this.enabled) return;
+    this.start();
+    if (!this.context) return;
+
+    try {
+      const oscillator = this.context.createOscillator();
+      const gain = this.context.createGain();
+      const now = this.context.currentTime;
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, now);
+      gain.gain.setValueAtTime(volume, now);
+      gain.gain.exponentialRampToValueAtTime(.001, now + duration);
+      oscillator.connect(gain);
+      gain.connect(this.context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+    } catch {
+      // A blocked or unavailable audio device should not interrupt the game loop.
+    }
+  }
+
+  shot() {
+    this.tone(95, .12, "sawtooth", .055);
+    this.tone(55, .16, "triangle", .04);
+  }
+
+  hit() {
+    this.tone(220, .08, "square", .025);
+  }
+
+  step() {
+    this.tone(65, .04, "triangle", .012);
+  }
+
+  toggle(enabled) {
+    this.enabled = Boolean(enabled);
+  }
+}
