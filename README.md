@@ -39,7 +39,8 @@ GROUND ZERO is a browser-based, first-person survival maze built with Three.js. 
 - `src/player.js`: camera-mounted equipment and weapon animation.
 - `src/monster.js`: enemy model and corridor-following movement.
 - `src/audio.js`: optional Web Audio effects.
-- `tests/`: Node.js tests for the maze grid and legacy game-state module.
+- `src/session.js`: testable menu, gameplay, pause and end-state transitions.
+- `tests/`: Node.js tests for maze geometry rules, session transitions and the retained legacy game-state module.
 
 ## Validation
 
