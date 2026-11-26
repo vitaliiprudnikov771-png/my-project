@@ -44,7 +44,9 @@ export function isCellWalkable(x, z) {
 export function cellBlocked(x, z, radius = 0.28) {
   const points = [
     [0, 0], [radius, 0], [-radius, 0],
-    [0, radius], [0, -radius]
+    [0, radius], [0, -radius],
+    [radius * .707, radius * .707], [radius * .707, -radius * .707],
+    [-radius * .707, radius * .707], [-radius * .707, -radius * .707]
   ];
   return points.some(([dx, dz]) => {
     const cell = worldToCell(x + dx, z + dz);
