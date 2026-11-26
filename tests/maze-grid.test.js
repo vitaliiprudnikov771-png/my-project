@@ -25,10 +25,10 @@ test("player start cell is open and a nearby wall blocks the player radius", () 
 });
 
 test("pathfinding returns a connected route through open cells only", () => {
-  const path = findPath(-20, -12, 20, 10);
+  const path = findPath(-20, -12, 20, 0);
   assert.ok(path.length > 2);
   assert.deepEqual(path[0], { x: -20, z: -12 });
-  assert.deepEqual(path.at(-1), { x: 20, z: 10 });
+  assert.deepEqual(path.at(-1), { x: 20, z: 0 });
   for (const point of path) {
     const cell = worldToCell(point.x, point.z);
     assert.equal(isCellWalkable(cell.x, cell.z), true);
