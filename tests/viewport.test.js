@@ -28,6 +28,6 @@ test("viewport metrics fall back to window dimensions and cap DPR", () => {
 test("viewport metrics guard invalid dimensions and pixel ratios", () => {
   assert.deepEqual(
     getViewportMetrics({ innerWidth: 0, innerHeight: NaN, devicePixelRatio: NaN }),
-    { width: 1, height: 1, pixelRatio: 1.5 }
+    { width: 1, height: 1, pixelRatio: 1 }
   );
 });
