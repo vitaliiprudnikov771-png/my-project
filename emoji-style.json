@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "style": "minimal",
+  "primary_pack": "sfsymbols",
+  "secondary_packs": [],
+  "catalog_version": "04c1ad3856e54f09",
+  "roles": {
+    "play": {"id":"5807414083388971488","key":"sfsymbols_vosproizvedenie","name":"Воспроизведение","pack":"sfsymbols","html_fallback":"▶️"},
+    "controller": {"id":"6023852878597200124","key":"sfsymbols_igrovoy_kontroller","name":"Игровой контроллер","pack":"sfsymbols","html_fallback":"🎮"},
+    "inventory": {"id":"6021621630202027944","key":"sfsymbols_ryukzak","name":"Рюкзак","pack":"sfsymbols","html_fallback":"🎒"},
+    "reward": {"id":"6021789619257874157","key":"sfsymbols_lenta_nagrady","name":"Лента награды","pack":"sfsymbols","html_fallback":"🥇"},
+    "achievement": {"id":"6021577980449396555","key":"sfsymbols_medal_so_zvezdoy","name":"Медаль со звездой","pack":"sfsymbols","html_fallback":"🥇"},
+    "leaderboard": {"id":"6021644067111180663","key":"sfsymbols_kubok","name":"Кубок","pack":"sfsymbols","html_fallback":"🏆"},
+    "quest": {"id":"6026228223145154159","key":"sfsymbols_kontrolnyy_spisok","name":"Контрольный список","pack":"sfsymbols","html_fallback":"✅"},
+    "health": {"id":"6023852792697854544","key":"sfsymbols_serdtse","name":"Сердце","pack":"sfsymbols","html_fallback":"🩷"},
+    "victory": {"id":"6021644067111180663","key":"sfsymbols_kubok","name":"Кубок","pack":"sfsymbols","html_fallback":"🏆"},
+    "defeat": {"id":"5807692706507399432","key":"sfsymbols_krestik","name":"Крестик","pack":"sfsymbols","html_fallback":"✖️"},
+    "settings": {"id":"6021582331251268218","key":"sfsymbols_shesteryonka","name":"Шестерёнка","pack":"sfsymbols","html_fallback":"⚙"},
+    "sound": {"id":"6021422880590403700","key":"sfsymbols_dinamik","name":"Динамик","pack":"sfsymbols","html_fallback":"🔈"},
+    "success": {"id":"6021868492037298942","key":"sfsymbols_shchit_s_galochkoy","name":"Щит с галочкой","pack":"sfsymbols","html_fallback":"🛡"},
+    "info": {"id":"6021620268697393273","key":"sfsymbols_informatsionnyy_dokument","name":"Информационный документ","pack":"sfsymbols","html_fallback":"ℹ️"},
+    "back": {"id":"5805509901048356965","key":"sfsymbols_strelka_vlevo","name":"Стрелка влево","pack":"sfsymbols","html_fallback":"⬅️"}
+  }
+}
