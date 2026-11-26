@@ -6,10 +6,6 @@ export function createPlayer(scene, camera) {
   flashlight.target.position.set(0, 0, -8);
   camera.add(flashlight, flashlight.target);
 
-  const cameraFill = new THREE.PointLight(0x9aa7a0, 1.2, 3);
-  cameraFill.position.set(0, -.25, -.8);
-  camera.add(cameraFill);
-
   const gun = new THREE.Group();
   const polymer = new THREE.MeshStandardMaterial({
     color: 0x202725, metalness: .28, roughness: .58
@@ -67,7 +63,6 @@ export function createPlayer(scene, camera) {
   return {
     gun,
     flashlight,
-    recoil: 0,
     time: 0,
     moving: false
   };
@@ -75,10 +70,9 @@ export function createPlayer(scene, camera) {
 
 export function animateWeapon(player, deltaTime) {
   player.time += deltaTime;
-  player.recoil = Math.max(0, player.recoil - deltaTime * 5);
   const bob = player.moving ? Math.sin(player.time * 10) * .012 : Math.sin(player.time * 1.7) * .002;
   player.gun.position.x = .38 + (player.moving ? Math.cos(player.time * 5) * .008 : 0);
   player.gun.position.y = -.38 + Math.abs(bob);
-  player.gun.position.z = -.5 + player.recoil * .08 - Math.abs(bob) * .55;
-  player.gun.rotation.x = player.recoil * .12 + bob * .45;
+  player.gun.position.z = -.5 - Math.abs(bob) * .55;
+  player.gun.rotation.x = bob * .45;
 }

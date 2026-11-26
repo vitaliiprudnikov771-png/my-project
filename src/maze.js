@@ -7,12 +7,12 @@ const wallGeometry = new THREE.BoxGeometry(2, 3.4, 2);
 const trimGeometry = new THREE.BoxGeometry(1.42, .055, .035);
 const fixtureGeometry = new THREE.BoxGeometry(.52, .07, .22);
 const wallMaterials = [
-  new THREE.MeshStandardMaterial({ color: 0x343b38, roughness: .92 }),
-  new THREE.MeshStandardMaterial({ color: 0x3b423e, roughness: .9 })
+  new THREE.MeshStandardMaterial({ color: 0x888888, roughness: .92 }),
+  new THREE.MeshStandardMaterial({ color: 0x999999, roughness: .9 })
 ];
-const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x59615a, metalness: .42, roughness: .62 });
-const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x303633, roughness: .97 });
-const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0x1b211e, roughness: 1 });
+const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: .12, roughness: .72 });
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: .97 });
+const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 1 });
 const fixtureMaterial = new THREE.MeshStandardMaterial({
   color: 0xb4aa91, emissive: 0x70674f, emissiveIntensity: .85
 });
@@ -53,11 +53,8 @@ export function buildMaze(scene) {
       if (mazeMap[z][x] !== ".") continue;
       const px = x * 2 - 24;
       const pz = z * 2 - 14;
-      const light = new THREE.PointLight(0xc4b99b, 2.2, 7, 2);
-      light.position.set(px, 2.92, pz);
-      group.add(light);
       const fixture = new THREE.Mesh(fixtureGeometry, fixtureMaterial);
-      fixture.position.copy(light.position);
+      fixture.position.set(px, 2.92, pz);
       group.add(fixture);
     }
   }
