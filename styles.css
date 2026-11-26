@@ -215,6 +215,9 @@ kbd { margin-left: 5px; color: #849088; font-size: 9px; }
 }
 
 #mobile { position: absolute; inset: 0; display: none; }
+.touch-input .controls-hint,
+.touch-input .bottom-hud { display: none; }
+.touch-input #mobile { display: block; }
 #mobile button {
   position: absolute;
   z-index: 3;
@@ -282,8 +285,6 @@ kbd { margin-left: 5px; color: #849088; font-size: 9px; }
 }
 
 @media (max-width: 760px) {
-  .controls-hint, .bottom-hud { display: none; }
-  #mobile { display: block; }
   .topline { gap: 5px; }
   .stat { min-width: 84px; padding: 8px; }
   .stat b { font-size: 22px; }

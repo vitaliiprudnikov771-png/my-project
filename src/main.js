@@ -7,9 +7,13 @@ import { GameSession } from "./session.js";
 import { getViewportMetrics } from "./viewport.js";
 import { createFrameLoop } from "./frame-loop.js";
 import { disposeObjectResources } from "./dispose.js";
+import { getInputMode } from "./input.js";
 
 const $ = selector => document.querySelector(selector);
 const canvas = $("#game");
+const inputMode = getInputMode(window, navigator);
+document.body.classList.toggle("touch-input", inputMode === "touch");
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x080c0a);
 scene.fog = new THREE.FogExp2(0x080c0a, .045);
@@ -133,7 +137,7 @@ function resetInput() {
 }
 
 function requestMouseCapture() {
-  if (innerWidth <= 760 || !canvas.requestPointerLock) return;
+  if (inputMode === "touch" || !canvas.requestPointerLock) return;
   try {
     const result = canvas.requestPointerLock();
     result?.catch?.(() => {});
@@ -334,7 +338,11 @@ $("#reload").addEventListener("click", reload);
 $("#mreload").addEventListener("click", reload);
 $("#flash").addEventListener("click", toggleFlashlight);
 $("#mflash").addEventListener("click", toggleFlashlight);
-$("#fire").addEventListener("click", fire);
+$("#fire").addEventListener("pointerdown", event => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  fire();
+});
 
 window.addEventListener("keydown", event => {
   if (event.code === "Escape") {
@@ -420,22 +428,22 @@ function endLook(event) {
 $("#look-zone").addEventListener("pointerup", endLook);
 $("#look-zone").addEventListener("pointercancel", endLook);
 
-document.addEventListener("mousedown", event => {
-  if (session.state !== "game" || innerWidth <= 760 || event.target !== canvas) return;
+document.addEventListener("pointerdown", event => {
+  if (session.state !== "game" || event.target !== canvas || event.pointerType !== "mouse") return;
   if (event.button === 0) fire();
   if (event.button === 2) {
     mouseLooking = true;
     lastMouse = { x: event.clientX, y: event.clientY };
   }
 });
-document.addEventListener("mouseup", event => {
-  if (event.button === 2) {
+document.addEventListener("pointerup", event => {
+  if (event.pointerType === "mouse" && event.button === 2) {
     mouseLooking = false;
     lastMouse = null;
   }
 });
 document.addEventListener("mousemove", event => {
-  if (session.state !== "game" || innerWidth <= 760) return;
+  if (session.state !== "game") return;
   if (document.pointerLockElement === canvas) {
     applyLook(event.movementX, event.movementY);
   } else if (mouseLooking && lastMouse) {
