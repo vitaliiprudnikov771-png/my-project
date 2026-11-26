@@ -478,3 +478,14 @@ if (telegram) {
     // The browser build remains usable if Telegram APIs are unavailable.
   }
 }
+
+window.addEventListener("pagehide", event => {
+  if (event.persisted) return;
+
+  frameLoop.stop();
+  resetInput();
+  disposeObjectResources(scene);
+  disposeObjectResources(camera);
+  renderer.dispose();
+  audio.dispose();
+});
