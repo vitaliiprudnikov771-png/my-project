@@ -1,3 +1,9 @@
+export function getInputMode(view = globalThis.window, navigatorLike = globalThis.navigator) {
+  const hasTouchPoints = Number(navigatorLike?.maxTouchPoints) > 0;
+  const hasTouchEvent = Boolean(view) && "ontouchstart" in view;
+  return hasTouchPoints || hasTouchEvent ? "touch" : "mouse";
+}
+
 export class InputController {
   constructor(){
     this.move={x:0,y:0};this.yawDelta=0;this.pitchDelta=0;this.keys=new Set();this.scan=false;this.dash=false;this.joyId=null;this.lookId=null;this.lastLook=null;
