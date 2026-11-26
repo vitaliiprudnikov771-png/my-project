@@ -5,6 +5,7 @@ import { spawnMonster, updateMonster } from "./monster.js";
 import { AudioSystem } from "./audio.js";
 import { GameSession } from "./session.js";
 import { getViewportMetrics } from "./viewport.js";
+import { createFrameLoop } from "./frame-loop.js";
 import { disposeObjectResources } from "./dispose.js";
 
 const $ = selector => document.querySelector(selector);
@@ -168,12 +169,14 @@ function start() {
   updateHud();
   show("game");
   clock.getDelta();
+  frameLoop.start();
   requestMouseCapture();
 }
 
 function pause() {
   if (session.state !== "game") return;
   session.pause();
+  frameLoop.stop();
   resetInput();
   if (document.pointerLockElement) document.exitPointerLock();
   show("pause");
@@ -181,6 +184,7 @@ function pause() {
 
 function end() {
   session.end();
+  frameLoop.stop();
   resetInput();
   if (document.pointerLockElement) document.exitPointerLock();
   show("end");
@@ -300,22 +304,26 @@ function applyLook(deltaX, deltaY, sensitivity = .004) {
   camera.rotation.set(pitch, yaw, 0, "YXZ");
 }
 
-function frame() {
-  requestAnimationFrame(frame);
+const frameLoop = createFrameLoop(() => {
   update(Math.min(clock.getDelta(), .05));
   renderer.render(scene, camera);
-}
-frame();
+}, {
+  request: callback => window.requestAnimationFrame(callback),
+  cancel: handle => window.cancelAnimationFrame(handle)
+});
+renderer.render(scene, camera);
 
 $("#start").addEventListener("click", start);
 $("#resume").addEventListener("click", () => {
   session.resume();
   show("game");
   clock.getDelta();
+  frameLoop.start();
   requestMouseCapture();
 });
 $("#quit").addEventListener("click", () => {
   session.quit();
+  frameLoop.stop();
   resetInput();
   if (document.pointerLockElement) document.exitPointerLock();
   show("menu");
@@ -334,6 +342,8 @@ window.addEventListener("keydown", event => {
     else if (session.state === "pause") {
       session.resume();
       show("game");
+      clock.getDelta();
+      frameLoop.start();
       requestMouseCapture();
     }
     return;
