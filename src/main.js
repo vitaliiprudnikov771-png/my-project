@@ -8,7 +8,7 @@ import { getViewportMetrics } from "./viewport.js";
 import { createFrameLoop } from "./frame-loop.js";
 import { disposeObjectResources } from "./dispose.js";
 import { getInputMode } from "./input.js";
-import { lightingConfig } from "./lighting-config.js";
+import { configureSimpleRender } from "./simple-render.js";
 
 const $ = selector => document.querySelector(selector);
 const canvas = $("#game");
@@ -16,8 +16,6 @@ const inputMode = getInputMode(window, navigator);
 document.body.classList.toggle("touch-input", inputMode === "touch");
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x080c0a);
-scene.fog = new THREE.FogExp2(0x080c0a, lightingConfig.fogDensity);
 
 const initialViewport = getViewportMetrics(window);
 const camera = new THREE.PerspectiveCamera(75, initialViewport.width / initialViewport.height, .1, 70);
@@ -31,22 +29,8 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setPixelRatio(initialViewport.pixelRatio);
 renderer.setSize(initialViewport.width, initialViewport.height);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = lightingConfig.exposure;
-
-scene.add(new THREE.HemisphereLight(0x69756d, 0x111713, lightingConfig.hemisphereIntensity));
-const fillLight = new THREE.DirectionalLight(0x9aa49a, lightingConfig.directionalIntensity);
-fillLight.position.set(-8, 10, 4);
-fillLight.castShadow = true;
-fillLight.shadow.mapSize.set(1024, 1024);
-fillLight.shadow.camera.left = -28;
-fillLight.shadow.camera.right = 28;
-fillLight.shadow.camera.top = 20;
-fillLight.shadow.camera.bottom = -20;
-scene.add(fillLight);
+renderer.shadowMap.enabled = false;
+configureSimpleRender(scene, renderer, THREE);
 
 const mazeRoot = buildMaze(scene);
 const player = createPlayer(scene, camera);
@@ -211,7 +195,6 @@ function fire() {
 
   ammo--;
   shootCooldown = .25;
-  player.recoil = .8;
   audio.shot();
 
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
