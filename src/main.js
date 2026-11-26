@@ -4,6 +4,7 @@ import { createPlayer, animateWeapon } from "./player.js";
 import { spawnMonster, updateMonster } from "./monster.js";
 import { AudioSystem } from "./audio.js";
 import { GameSession } from "./session.js";
+import { disposeObjectResources } from "./dispose.js";
 
 const $ = selector => document.querySelector(selector);
 const canvas = $("#game");
@@ -111,14 +112,7 @@ function updateMove() {
 
 function disposeMonster(monster) {
   scene.remove(monster.root);
-  monster.root.traverse(object => {
-    object.geometry?.dispose();
-    if (Array.isArray(object.material)) {
-      object.material.forEach(material => material.dispose());
-    } else {
-      object.material?.dispose();
-    }
-  });
+  disposeObjectResources(monster.root);
 }
 
 function resetInput() {
