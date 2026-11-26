@@ -3,6 +3,7 @@ import { buildMaze, cellBlocked, getSpawnPoints } from "./maze.js";
 import { createPlayer, animateWeapon } from "./player.js";
 import { spawnMonster, updateMonster } from "./monster.js";
 import { AudioSystem } from "./audio.js";
+import { GameSession } from "./session.js";
 
 const $ = selector => document.querySelector(selector);
 const canvas = $("#game");
@@ -45,7 +46,7 @@ const monsters = [];
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
 
-let state = "menu";
+const session = new GameSession();
 let health = 100;
 let ammo = 12;
 let reserve = 48;
@@ -133,7 +134,7 @@ function requestMouseCapture() {
 }
 
 function start() {
-  state = "game";
+  session.start();
   audio.start();
   monsters.forEach(monster => scene.remove(monster.root));
   monsters.length = 0;
@@ -163,28 +164,28 @@ function start() {
 }
 
 function pause() {
-  if (state !== "game") return;
-  state = "pause";
+  if (session.state !== "game") return;
+  session.pause();
   resetInput();
   if (document.pointerLockElement) document.exitPointerLock();
   show("pause");
 }
 
 function end() {
-  state = "end";
+  session.end();
   resetInput();
   if (document.pointerLockElement) document.exitPointerLock();
   show("end");
 }
 
 function reload() {
-  if (state !== "game" || reloadTime > 0 || ammo >= 12 || reserve <= 0) return;
+  if (session.state !== "game" || reloadTime > 0 || ammo >= 12 || reserve <= 0) return;
   reloadTime = 1.1;
   note("RELOADING");
 }
 
 function fire() {
-  if (state !== "game" || shootCooldown > 0 || reloadTime > 0) return;
+  if (session.state !== "game" || shootCooldown > 0 || reloadTime > 0) return;
   if (ammo <= 0) {
     note("EMPTY");
     audio.tone(200, .06, "square");
@@ -235,7 +236,7 @@ function tryMove(deltaX, deltaZ) {
 }
 
 function update(deltaTime) {
-  if (state !== "game") return;
+  if (session.state !== "game") return;
 
   shootCooldown = Math.max(0, shootCooldown - deltaTime);
   damageCooldown = Math.max(0, damageCooldown - deltaTime);
@@ -300,13 +301,13 @@ frame();
 
 $("#start").addEventListener("click", start);
 $("#resume").addEventListener("click", () => {
-  state = "game";
+  session.resume();
   show("game");
   clock.getDelta();
   requestMouseCapture();
 });
 $("#quit").addEventListener("click", () => {
-  state = "menu";
+  session.quit();
   resetInput();
   if (document.pointerLockElement) document.exitPointerLock();
   show("menu");
@@ -321,15 +322,15 @@ $("#fire").addEventListener("click", fire);
 
 window.addEventListener("keydown", event => {
   if (event.code === "Escape") {
-    if (state === "game") pause();
-    else if (state === "pause") {
-      state = "game";
+    if (session.state === "game") pause();
+    else if (session.state === "pause") {
+      session.resume();
       show("game");
       requestMouseCapture();
     }
     return;
   }
-  if (state !== "game") return;
+  if (session.state !== "game") return;
   if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
     event.preventDefault();
   }
@@ -402,7 +403,7 @@ $("#look-zone").addEventListener("pointerup", endLook);
 $("#look-zone").addEventListener("pointercancel", endLook);
 
 document.addEventListener("mousedown", event => {
-  if (state !== "game" || innerWidth <= 760 || event.target !== canvas) return;
+  if (session.state !== "game" || innerWidth <= 760 || event.target !== canvas) return;
   if (event.button === 0) fire();
   if (event.button === 2) {
     mouseLooking = true;
@@ -416,7 +417,7 @@ document.addEventListener("mouseup", event => {
   }
 });
 document.addEventListener("mousemove", event => {
-  if (state !== "game" || innerWidth <= 760) return;
+  if (session.state !== "game" || innerWidth <= 760) return;
   if (document.pointerLockElement === canvas) {
     applyLook(event.movementX, event.movementY);
   } else if (mouseLooking && lastMouse) {
@@ -425,15 +426,15 @@ document.addEventListener("mousemove", event => {
   }
 });
 document.addEventListener("contextmenu", event => {
-  if (state === "game") event.preventDefault();
+  if (session.state === "game") event.preventDefault();
 });
 
 window.addEventListener("blur", () => {
-  if (state === "game") pause();
+  if (session.state === "game") pause();
   resetInput();
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && state === "game") pause();
+  if (document.hidden && session.state === "game") pause();
 });
 
 window.addEventListener("resize", () => {
