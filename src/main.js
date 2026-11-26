@@ -280,6 +280,7 @@ function update(deltaTime) {
     }
   }
 
+  player.moving = direction.lengthSq() > .01;
   animateWeapon(player, deltaTime);
 }
 
