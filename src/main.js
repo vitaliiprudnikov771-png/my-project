@@ -4,6 +4,7 @@ import { createPlayer, animateWeapon } from "./player.js";
 import { spawnMonster, updateMonster } from "./monster.js";
 import { AudioSystem } from "./audio.js";
 import { GameSession } from "./session.js";
+import { getViewportMetrics } from "./viewport.js";
 import { disposeObjectResources } from "./dispose.js";
 
 const $ = selector => document.querySelector(selector);
@@ -12,7 +13,8 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x080c0a);
 scene.fog = new THREE.FogExp2(0x080c0a, .045);
 
-const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, .1, 70);
+const initialViewport = getViewportMetrics(window);
+const camera = new THREE.PerspectiveCamera(75, initialViewport.width / initialViewport.height, .1, 70);
 camera.position.set(-20, 1.65, -12);
 camera.rotation.order = "YXZ";
 
@@ -21,8 +23,8 @@ const renderer = new THREE.WebGLRenderer({
   antialias: true,
   powerPreference: "high-performance"
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(initialViewport.pixelRatio);
+renderer.setSize(initialViewport.width, initialViewport.height);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -443,11 +445,17 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden && session.state === "game") pause();
 });
 
-window.addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight;
+function resizeViewport() {
+  const viewport = getViewportMetrics(window);
+  camera.aspect = viewport.width / viewport.height;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+  renderer.setPixelRatio(viewport.pixelRatio);
+  renderer.setSize(viewport.width, viewport.height);
+}
+
+window.addEventListener("resize", resizeViewport, { passive: true });
+window.addEventListener("orientationchange", resizeViewport, { passive: true });
+window.visualViewport?.addEventListener("resize", resizeViewport, { passive: true });
 
 const telegram = window.Telegram?.WebApp;
 if (telegram) {
@@ -455,6 +463,7 @@ if (telegram) {
     telegram.ready();
     telegram.expand();
     telegram.disableVerticalSwipes?.();
+    telegram.onEvent?.("viewportChanged", resizeViewport);
   } catch {
     // The browser build remains usable if Telegram APIs are unavailable.
   }
