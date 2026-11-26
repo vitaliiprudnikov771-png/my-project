@@ -232,7 +232,7 @@ kbd { margin-left: 5px; color: #849088; font-size: 9px; }
   position: absolute;
   z-index: 2;
   bottom: max(100px, calc(env(safe-area-inset-bottom) + 76px));
-  left: max(25px, env(safe-area-inset-left) + 15px);
+  left: max(25px, calc(env(safe-area-inset-left) + 15px));
   width: 124px;
   height: 124px;
   border: 1px solid #737c75a0;
@@ -263,18 +263,18 @@ kbd { margin-left: 5px; color: #849088; font-size: 9px; }
   touch-action: none;
 }
 #fire {
-  right: max(25px, env(safe-area-inset-right) + 15px);
+  right: max(25px, calc(env(safe-area-inset-right) + 15px));
   bottom: max(105px, calc(env(safe-area-inset-bottom) + 90px));
   width: 82px !important;
   height: 82px !important;
   background: #9b8062e8 !important;
 }
 #mreload {
-  right: max(120px, env(safe-area-inset-right) + 110px);
+  right: max(120px, calc(env(safe-area-inset-right) + 110px));
   bottom: max(45px, calc(env(safe-area-inset-bottom) + 24px));
 }
 #mflash {
-  right: max(125px, env(safe-area-inset-right) + 115px);
+  right: max(125px, calc(env(safe-area-inset-right) + 115px));
   bottom: max(145px, calc(env(safe-area-inset-bottom) + 132px));
   width: 48px !important;
   height: 48px !important;
