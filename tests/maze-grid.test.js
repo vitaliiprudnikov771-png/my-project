@@ -38,7 +38,10 @@ test("pathfinding returns a connected route through open cells only", () => {
 test("monster spawn points are reachable, separated and never inside walls", () => {
   const spawns = getSpawnPoints(-20, -12, 4);
   assert.equal(spawns.length, 4);
-  for (const point of spawns) assert.equal(cellBlocked(point.x, point.z), false);
+  for (const point of spawns) {
+    assert.equal(cellBlocked(point.x, point.z), false);
+    assert.ok(findPath(point.x, point.z, -20, -12).length > 0);
+  }
   for (let i = 0; i < spawns.length; i++) {
     for (let j = i + 1; j < spawns.length; j++) {
       assert.ok(Math.hypot(spawns[i].x - spawns[j].x, spawns[i].z - spawns[j].z) >= 5);
