@@ -1,10 +1,452 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";import {buildMaze,cellBlocked} from "./maze.js";import {createPlayer,animateWeapon} from "./player.js";import {spawnMonster,updateMonster} from "./monster.js";import {AudioSystem} from "./audio.js";
-const $=s=>document.querySelector(s),canvas=$("#game"),scene=new THREE.Scene();scene.background=new THREE.Color(0x080c0a);scene.fog=new THREE.FogExp2(0x080c0a,.045);const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,70);camera.position.set(-20,1.65,-12);camera.rotation.order="YXZ";const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;scene.add(new THREE.HemisphereLight(0x69756d,0x111713,.45));const dim=new THREE.DirectionalLight(0x9aa49a,.25);dim.position.set(-8,10,4);scene.add(dim);buildMaze(scene);const player=createPlayer(scene,camera),audio=new AudioSystem(),monsters=[],clock=new THREE.Clock();let state="menu",health=100,ammo=12,reserve=48,yaw=0,pitch=0,flash=true,shootCooldown=0,reloadTime=0,damageCooldown=0,move={x:0,y:0},joystick=null,lookPointer=null,lastLook=null,footstep=0;
-function show(id){$("#menu").classList.toggle("hidden",id!=="menu");$("#pausemenu").classList.toggle("hidden",id!=="pause");$("#endmenu").classList.toggle("hidden",id!=="end");$("#hud").classList.toggle("hidden",id!=="game");}function note(t){$("#notice").textContent=t;setTimeout(()=>{$("#notice").textContent=""},1800);}function hud(){$("#health").textContent=health;$("#healthbar").style.width=health+"%";$("#ammo").innerHTML=ammo+" <span>/ "+reserve+"</span>";}
-function start(){audio.start();state="game";health=100;ammo=12;reserve=48;camera.position.set(-20,1.65,-12);yaw=0;pitch=0;camera.rotation.set(0,0,0);monsters.forEach(m=>scene.remove(m.root));monsters.length=0;for(let i=0;i<4;i++)monsters.push(spawnMonster(scene,new THREE.Vector3(-8+i*4,0,8+Math.random()*4)));hud();show("game");}function pause(){if(state!=="game")return;state="pause";show("pause");}function end(){state="end";show("end");}function reload(){if(state!=="game"||reloadTime||ammo>=12||reserve<=0)return;reloadTime=1.1;note("RELOADING");}
-function fire(){if(state!=="game"||shootCooldown||reloadTime)return;if(ammo<=0){note("EMPTY");audio.tone(200,.06,"square");return;}ammo--;shootCooldown=.25;player.recoil=.8;audio.shot();const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(0,0),camera);const hits=ray.intersectObjects(monsters.map(m=>m.root),true);if(hits.length){let m=monsters.find(m=>m.root===hits[0].object||m.root.children.includes(hits[0].object));if(m){m.health--;audio.hit();if(m.health<=0){scene.remove(m.root);monsters.splice(monsters.indexOf(m),1);note("TARGET DOWN");}}}hud();}
-function flashlight(){flash=!flash;player.flashlight.intensity=flash?65:0;note(flash?"LIGHT ON":"LIGHT OFF");}function tryMove(x,z){const nx=camera.position.x+x,nz=camera.position.z+z;if(!cellBlocked(nx,camera.position.z))camera.position.x=nx;if(!cellBlocked(camera.position.x,nz))camera.position.z=nz;}
-function update(dt){if(state!=="game")return;shootCooldown=Math.max(0,shootCooldown-dt);damageCooldown=Math.max(0,damageCooldown-dt);if(reloadTime>0){reloadTime-=dt;if(reloadTime<=0){const n=Math.min(12-ammo,reserve);ammo+=n;reserve-=n;hud();}}const forward=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));const v=right.multiplyScalar(move.x).add(forward.multiplyScalar(move.y));if(v.lengthSq()>1)v.normalize();tryMove(v.x*3.4*dt,v.z*3.4*dt);if(v.lengthSq()>.01){footstep-=dt;if(footstep<=0){audio.step();footstep=.45;}}for(const m of monsters){const d=updateMonster(m,camera.position,dt);if(d<1.3&&damageCooldown<=0){health=Math.max(0,health-12);damageCooldown=1;hud();note("YOU ARE INJURED");if(!health)end();}}animateWeapon(player,dt);}
-function frame(){requestAnimationFrame(frame);update(Math.min(clock.getDelta(),.05));renderer.render(scene,camera);}frame();$("#start").onclick=start;$("#resume").onclick=()=>{state="game";show("game");};$("#quit").onclick=()=>{state="menu";show("menu");};$("#restart").onclick=start;$("#pause").onclick=pause;$("#reload").onclick=reload;$("#mreload").onclick=reload;$("#flash").onclick=flashlight;$("#mflash").onclick=flashlight;$("#fire").onclick=fire;
-window.addEventListener("keydown",e=>{if(e.code==="Escape")state==="game"?pause():state==="pause"&&(state="game",show("game"));if(e.code==="KeyR")reload();if(e.code==="KeyF")flashlight();if(state==="game"){if(e.code==="KeyW")move.y=1;if(e.code==="KeyS")move.y=-1;if(e.code==="KeyA")move.x=-1;if(e.code==="KeyD")move.x=1;if(e.code==="Space")fire();}});window.addEventListener("keyup",e=>{if(["KeyW","KeyS"].includes(e.code))move.y=0;if(["KeyA","KeyD"].includes(e.code))move.x=0;});$("#stick").addEventListener("pointerdown",e=>{joystick=e.pointerId;$("#stick").setPointerCapture(e.pointerId);joy(e);});$("#stick").addEventListener("pointermove",e=>{if(e.pointerId===joystick)joy(e);});const joyend=e=>{if(e.pointerId===joystick){joystick=null;move={x:0,y:0};$("#stick-knob").style.transform="";}};$("#stick").addEventListener("pointerup",joyend);$("#stick").addEventListener("pointercancel",joyend);function joy(e){const r=$("#stick").getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,lim=38,len=Math.hypot(dx,dy),k=len>lim?lim/len:1;$("#stick-knob").style.transform=`translate(${dx*k}px,${dy*k}px)`;move.x=dx*k/lim;move.y=-dy*k/lim;}
-$("#look-zone").addEventListener("pointerdown",e=>{lookPointer=e.pointerId;lastLook={x:e.clientX,y:e.clientY};$("#look-zone").setPointerCapture(e.pointerId);});$("#look-zone").addEventListener("pointermove",e=>{if(e.pointerId!==lookPointer)return;const dx=e.clientX-lastLook.x,dy=e.clientY-lastLook.y;yaw-=dx*.004;pitch=Math.max(-1.1,Math.min(1.1,pitch-dy*.003));camera.rotation.set(pitch,yaw,0,"YXZ");lastLook={x:e.clientX,y:e.clientY};});const lookEnd=e=>{if(e.pointerId===lookPointer){lookPointer=null;lastLook=null;}};$("#look-zone").addEventListener("pointerup",lookEnd);$("#look-zone").addEventListener("pointercancel",lookEnd);window.addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();}
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import { buildMaze, cellBlocked, getSpawnPoints } from "./maze.js";
+import { createPlayer, animateWeapon } from "./player.js";
+import { spawnMonster, updateMonster } from "./monster.js";
+import { AudioSystem } from "./audio.js";
+
+const $ = selector => document.querySelector(selector);
+const canvas = $("#game");
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080c0a);
+scene.fog = new THREE.FogExp2(0x080c0a, .045);
+
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, .1, 70);
+camera.position.set(-20, 1.65, -12);
+camera.rotation.order = "YXZ";
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  powerPreference: "high-performance"
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = .85;
+
+scene.add(new THREE.HemisphereLight(0x69756d, 0x111713, .45));
+const fillLight = new THREE.DirectionalLight(0x9aa49a, .25);
+fillLight.position.set(-8, 10, 4);
+fillLight.castShadow = true;
+fillLight.shadow.mapSize.set(1024, 1024);
+fillLight.shadow.camera.left = -28;
+fillLight.shadow.camera.right = 28;
+fillLight.shadow.camera.top = 20;
+fillLight.shadow.camera.bottom = -20;
+scene.add(fillLight);
+
+const mazeRoot = buildMaze(scene);
+const player = createPlayer(scene, camera);
+const audio = new AudioSystem();
+const monsters = [];
+const clock = new THREE.Clock();
+const raycaster = new THREE.Raycaster();
+
+let state = "menu";
+let health = 100;
+let ammo = 12;
+let reserve = 48;
+let yaw = Math.PI;
+let pitch = 0;
+let flashlightOn = true;
+let shootCooldown = 0;
+let reloadTime = 0;
+let damageCooldown = 0;
+let footstepTimer = 0;
+let noteTimer = 0;
+let mouseLooking = false;
+let lastMouse = null;
+let joystickPointer = null;
+let lookPointer = null;
+let lastLook = null;
+const keyboard = new Set();
+const touchMove = { x: 0, y: 0 };
+const move = { x: 0, y: 0 };
+
+function show(screen) {
+  $("#menu").classList.toggle("hidden", screen !== "menu");
+  $("#pausemenu").classList.toggle("hidden", screen !== "pause");
+  $("#endmenu").classList.toggle("hidden", screen !== "end");
+  $("#hud").classList.toggle("hidden", screen !== "game");
+  document.body.classList.toggle("playing", screen === "game");
+}
+
+function note(message) {
+  const element = $("#notice");
+  element.textContent = message;
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => {
+    element.textContent = "";
+  }, 1800);
+}
+
+function updateHud() {
+  $("#health").textContent = String(health);
+  $("#healthbar").style.width = health + "%";
+  $("#ammo").textContent = ammo + " / " + reserve;
+  $("#objective").textContent = monsters.length
+    ? "HOSTILES: " + monsters.length
+    : "AREA SECURED";
+}
+
+function updateMove() {
+  const keyX = Number(keyboard.has("KeyD") || keyboard.has("ArrowRight"))
+    - Number(keyboard.has("KeyA") || keyboard.has("ArrowLeft"));
+  const keyY = Number(keyboard.has("KeyW") || keyboard.has("ArrowUp"))
+    - Number(keyboard.has("KeyS") || keyboard.has("ArrowDown"));
+  let x = keyX + touchMove.x;
+  let y = keyY + touchMove.y;
+  const length = Math.hypot(x, y);
+  if (length > 1) {
+    x /= length;
+    y /= length;
+  }
+  move.x = x;
+  move.y = y;
+}
+
+function resetInput() {
+  keyboard.clear();
+  touchMove.x = 0;
+  touchMove.y = 0;
+  move.x = 0;
+  move.y = 0;
+  joystickPointer = null;
+  lookPointer = null;
+  lastLook = null;
+  mouseLooking = false;
+  lastMouse = null;
+  $("#stick-knob").style.transform = "";
+}
+
+function requestMouseCapture() {
+  if (innerWidth <= 760 || !canvas.requestPointerLock) return;
+  try {
+    const result = canvas.requestPointerLock();
+    result?.catch?.(() => {});
+  } catch {
+    // Right-button drag remains available when pointer lock is denied.
+  }
+}
+
+function start() {
+  audio.start();
+  monsters.forEach(monster => scene.remove(monster.root));
+  monsters.length = 0;
+
+  health = 100;
+  ammo = 12;
+  reserve = 48;
+  shootCooldown = 0;
+  reloadTime = 0;
+  damageCooldown = 0;
+  footstepTimer = 0;
+  yaw = Math.PI;
+  pitch = 0;
+  camera.position.set(-20, 1.65, -12);
+  camera.rotation.set(pitch, yaw, 0, "YXZ");
+  resetInput();
+
+  const spawnPoints = getSpawnPoints(camera.position.x, camera.position.z, 4);
+  for (const point of spawnPoints) {
+    monsters.push(spawnMonster(scene, new THREE.Vector3(point.x, 0, point.z)));
+  }
+
+  updateHud();
+  show("game");
+  clock.getDelta();
+  requestMouseCapture();
+}
+
+function pause() {
+  if (state !== "game") return;
+  state = "pause";
+  resetInput();
+  if (document.pointerLockElement) document.exitPointerLock();
+  show("pause");
+}
+
+function end() {
+  state = "end";
+  resetInput();
+  if (document.pointerLockElement) document.exitPointerLock();
+  show("end");
+}
+
+function reload() {
+  if (state !== "game" || reloadTime > 0 || ammo >= 12 || reserve <= 0) return;
+  reloadTime = 1.1;
+  note("RELOADING");
+}
+
+function fire() {
+  if (state !== "game" || shootCooldown > 0 || reloadTime > 0) return;
+  if (ammo <= 0) {
+    note("EMPTY");
+    audio.tone(200, .06, "square");
+    return;
+  }
+
+  ammo--;
+  shootCooldown = .25;
+  player.recoil = .8;
+  audio.shot();
+
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const targets = raycaster.intersectObjects(monsters.map(monster => monster.root), true);
+  const obstacles = raycaster.intersectObject(mazeRoot, true);
+  const targetHit = targets[0];
+  const wallHit = obstacles[0];
+
+  if (targetHit && (!wallHit || targetHit.distance < wallHit.distance)) {
+    const monster = monsters.find(item => item.root === targetHit.object.parent
+      || item.root.children.includes(targetHit.object));
+    if (monster) {
+      monster.health--;
+      audio.hit();
+      if (monster.health <= 0) {
+        scene.remove(monster.root);
+        monsters.splice(monsters.indexOf(monster), 1);
+        note("TARGET DOWN");
+        updateHud();
+      }
+    }
+  }
+
+  updateHud();
+}
+
+function toggleFlashlight() {
+  flashlightOn = !flashlightOn;
+  player.flashlight.intensity = flashlightOn ? 65 : 0;
+  note(flashlightOn ? "LIGHT ON" : "LIGHT OFF");
+}
+
+function tryMove(deltaX, deltaZ) {
+  const radius = .28;
+  const nextX = camera.position.x + deltaX;
+  const nextZ = camera.position.z + deltaZ;
+  if (!cellBlocked(nextX, camera.position.z, radius)) camera.position.x = nextX;
+  if (!cellBlocked(camera.position.x, nextZ, radius)) camera.position.z = nextZ;
+}
+
+function update(deltaTime) {
+  if (state !== "game") return;
+
+  shootCooldown = Math.max(0, shootCooldown - deltaTime);
+  damageCooldown = Math.max(0, damageCooldown - deltaTime);
+
+  if (reloadTime > 0) {
+    reloadTime -= deltaTime;
+    if (reloadTime <= 0) {
+      const loaded = Math.min(12 - ammo, reserve);
+      ammo += loaded;
+      reserve -= loaded;
+      updateHud();
+    }
+  }
+
+  const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const direction = right.multiplyScalar(move.x).add(forward.multiplyScalar(move.y));
+  if (direction.lengthSq() > 1) direction.normalize();
+
+  const stepX = direction.x * 3.4 * deltaTime;
+  const stepZ = direction.z * 3.4 * deltaTime;
+  tryMove(stepX, stepZ);
+
+  if (direction.lengthSq() > .01) {
+    footstepTimer -= deltaTime;
+    if (footstepTimer <= 0) {
+      audio.step();
+      footstepTimer = .45;
+    }
+  }
+
+  for (const monster of monsters) {
+    const distance = updateMonster(monster, camera.position, deltaTime);
+    if (distance < 1.3 && damageCooldown <= 0) {
+      health = Math.max(0, health - 12);
+      damageCooldown = 1;
+      updateHud();
+      note("YOU ARE INJURED");
+      if (health === 0) {
+        end();
+        break;
+      }
+    }
+  }
+
+  animateWeapon(player, deltaTime);
+}
+
+function applyLook(deltaX, deltaY, sensitivity = .004) {
+  yaw -= deltaX * sensitivity;
+  pitch = THREE.MathUtils.clamp(pitch - deltaY * sensitivity, -1.1, 1.1);
+  camera.rotation.set(pitch, yaw, 0, "YXZ");
+}
+
+function frame() {
+  requestAnimationFrame(frame);
+  update(Math.min(clock.getDelta(), .05));
+  renderer.render(scene, camera);
+}
+frame();
+
+$("#start").addEventListener("click", start);
+$("#resume").addEventListener("click", () => {
+  state = "game";
+  show("game");
+  clock.getDelta();
+  requestMouseCapture();
+});
+$("#quit").addEventListener("click", () => {
+  state = "menu";
+  resetInput();
+  if (document.pointerLockElement) document.exitPointerLock();
+  show("menu");
+});
+$("#restart").addEventListener("click", start);
+$("#pause").addEventListener("click", pause);
+$("#reload").addEventListener("click", reload);
+$("#mreload").addEventListener("click", reload);
+$("#flash").addEventListener("click", toggleFlashlight);
+$("#mflash").addEventListener("click", toggleFlashlight);
+$("#fire").addEventListener("click", fire);
+
+window.addEventListener("keydown", event => {
+  if (event.code === "Escape") {
+    if (state === "game") pause();
+    else if (state === "pause") {
+      state = "game";
+      show("game");
+      requestMouseCapture();
+    }
+    return;
+  }
+  if (state !== "game") return;
+  if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+    event.preventDefault();
+  }
+  if (event.repeat) return;
+  keyboard.add(event.code);
+  updateMove();
+  if (event.code === "KeyR") reload();
+  if (event.code === "KeyF") toggleFlashlight();
+  if (event.code === "Space") fire();
+});
+
+window.addEventListener("keyup", event => {
+  keyboard.delete(event.code);
+  updateMove();
+});
+
+$("#stick").addEventListener("pointerdown", event => {
+  event.preventDefault();
+  joystickPointer = event.pointerId;
+  $("#stick").setPointerCapture(event.pointerId);
+  updateJoystick(event);
+});
+$("#stick").addEventListener("pointermove", event => {
+  if (event.pointerId === joystickPointer) updateJoystick(event);
+});
+
+function updateJoystick(event) {
+  const rect = $("#stick").getBoundingClientRect();
+  const dx = event.clientX - rect.left - rect.width / 2;
+  const dy = event.clientY - rect.top - rect.height / 2;
+  const limit = 38;
+  const length = Math.hypot(dx, dy);
+  const scale = length > limit ? limit / length : 1;
+  const x = dx * scale;
+  const y = dy * scale;
+  $("#stick-knob").style.transform = `translate(${x}px, ${y}px)`;
+  touchMove.x = x / limit;
+  touchMove.y = -y / limit;
+  updateMove();
+}
+
+function endJoystick(event) {
+  if (event.pointerId !== joystickPointer) return;
+  joystickPointer = null;
+  touchMove.x = 0;
+  touchMove.y = 0;
+  $("#stick-knob").style.transform = "";
+  updateMove();
+}
+$("#stick").addEventListener("pointerup", endJoystick);
+$("#stick").addEventListener("pointercancel", endJoystick);
+
+$("#look-zone").addEventListener("pointerdown", event => {
+  lookPointer = event.pointerId;
+  lastLook = { x: event.clientX, y: event.clientY };
+  $("#look-zone").setPointerCapture(event.pointerId);
+});
+$("#look-zone").addEventListener("pointermove", event => {
+  if (event.pointerId !== lookPointer || !lastLook) return;
+  applyLook(event.clientX - lastLook.x, event.clientY - lastLook.y, .0035);
+  lastLook = { x: event.clientX, y: event.clientY };
+});
+
+function endLook(event) {
+  if (event.pointerId !== lookPointer) return;
+  lookPointer = null;
+  lastLook = null;
+}
+$("#look-zone").addEventListener("pointerup", endLook);
+$("#look-zone").addEventListener("pointercancel", endLook);
+
+document.addEventListener("mousedown", event => {
+  if (state !== "game" || innerWidth <= 760) return;
+  if (event.button === 0) fire();
+  if (event.button === 2) {
+    mouseLooking = true;
+    lastMouse = { x: event.clientX, y: event.clientY };
+  }
+});
+document.addEventListener("mouseup", event => {
+  if (event.button === 2) {
+    mouseLooking = false;
+    lastMouse = null;
+  }
+});
+document.addEventListener("mousemove", event => {
+  if (state !== "game" || innerWidth <= 760) return;
+  if (document.pointerLockElement === canvas) {
+    applyLook(event.movementX, event.movementY);
+  } else if (mouseLooking && lastMouse) {
+    applyLook(event.clientX - lastMouse.x, event.clientY - lastMouse.y);
+    lastMouse = { x: event.clientX, y: event.clientY };
+  }
+});
+document.addEventListener("contextmenu", event => {
+  if (state === "game") event.preventDefault();
+});
+
+window.addEventListener("blur", () => {
+  if (state === "game") pause();
+  resetInput();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && state === "game") pause();
+});
+
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+const telegram = window.Telegram?.WebApp;
+if (telegram) {
+  try {
+    telegram.ready();
+    telegram.expand();
+    telegram.disableVerticalSwipes?.();
+  } catch {
+    // The browser build remains usable if Telegram APIs are unavailable.
+  }
+}
