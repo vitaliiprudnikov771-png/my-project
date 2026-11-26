@@ -11,8 +11,8 @@ const wallMaterials = [
   new THREE.MeshStandardMaterial({ color: 0x3b423e, roughness: .9 })
 ];
 const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x59615a, metalness: .42, roughness: .62 });
-const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x242a27, roughness: .97 });
-const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0x111715, roughness: 1 });
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x303633, roughness: .97 });
+const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0x1b211e, roughness: 1 });
 const fixtureMaterial = new THREE.MeshStandardMaterial({
   color: 0xb4aa91, emissive: 0x70674f, emissiveIntensity: .85
 });
