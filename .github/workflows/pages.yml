@@ -1,26 +1,36 @@
 name: Test and deploy GROUND ZERO
+
 on:
   push:
+    branches: [main, rebuild-fps-foundation]
+  pull_request:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
   group: github-pages
   cancel-in-progress: true
+
 jobs:
   test:
+    name: Tests and static checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm test
-      - run: node --check src/main.js && node --check src/maze.js && node --check src/player.js && node --check src/monster.js && node --check src/audio.js && node --check src/input.js && node --check src/world.js && node --check src/game-state.js
+      - name: Run syntax checks and unit tests
+        run: npm run check
+
   deploy:
+    name: Deploy GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
     environment:
