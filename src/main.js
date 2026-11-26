@@ -109,6 +109,18 @@ function updateMove() {
   move.y = y;
 }
 
+function disposeMonster(monster) {
+  scene.remove(monster.root);
+  monster.root.traverse(object => {
+    object.geometry?.dispose();
+    if (Array.isArray(object.material)) {
+      object.material.forEach(material => material.dispose());
+    } else {
+      object.material?.dispose();
+    }
+  });
+}
+
 function resetInput() {
   keyboard.clear();
   touchMove.x = 0;
@@ -136,7 +148,7 @@ function requestMouseCapture() {
 function start() {
   session.start();
   audio.start();
-  monsters.forEach(monster => scene.remove(monster.root));
+  monsters.forEach(disposeMonster);
   monsters.length = 0;
 
   health = 100;
@@ -210,7 +222,7 @@ function fire() {
       monster.health--;
       audio.hit();
       if (monster.health <= 0) {
-        scene.remove(monster.root);
+        disposeMonster(monster);
         monsters.splice(monsters.indexOf(monster), 1);
         note("TARGET DOWN");
         updateHud();
